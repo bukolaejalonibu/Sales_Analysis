@@ -1,0 +1,41 @@
+import pandas as pd 
+from sqlalchemy import create_engine 
+from dotenv import load_dotenv
+import os
+import psycopg2
+
+def extract(filepath):
+    data = pd.read_csv('Exchange_Rates.csv')
+    print(f'Data has been successfully loaded from {filepath}')
+    return data
+
+def transform(data):
+    data = data.round({'Exchange': 2})
+    data['Date'] = pd.to_datetime(data['Date'])
+    print('Data has been successfully transformed')
+    return data 
+
+def load(data, tablename):
+    #defining credentials for postgres
+    user = os.getenv('DB_USER')
+    password = os.getenv('DB_PASSWORD')
+    host = os.getenv('DB_HOST')
+    port = os.getenv('DB_PORT')
+    name = os.getenv('DB_NAME')
+    
+    #starting postgres engine
+    engine = create_engine(f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{name}')
+    
+    #loading data into postgres
+    data.to_sql(tablename, engine, if_exists='replace', index=False)
+    print(f'Data has been successfully loaded into {tablename} table')
+
+def pipeline(filepath, tablename):
+    data = extract(filepath)
+    transformed_data = transform(data)
+    load(transformed_data, tablename)
+    
+filepath = 'Exchange_Rates.csv'
+tablename = 'Exchange_Rates'
+
+pipeline(filepath, tablename)
