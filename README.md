@@ -1,6 +1,13 @@
 # Sales_Performance_Analysis
 
-Sales Performance Analysis Using ETL and SQL
+## Table of Content
+
+-    [Project Overview](#project-overview)
+-    [Data Sources](#data-sources)
+-    [Tools](#tools)
+-    [Data Preparation](#data-preparation)
+-    [Exploratoty Data Analysis](#exploratory-data-analysis)
+-    [Data Analysis](#data-analysis)
 
 ### Project Overview
 
