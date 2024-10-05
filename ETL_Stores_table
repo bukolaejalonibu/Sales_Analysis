@@ -1,0 +1,45 @@
+import pandas as pd 
+from sqlalchemy import create_engine 
+from dotenv import load_dotenv
+import os
+import psycopg2
+
+def extract(filepath):
+    data = pd.read_csv('Stores.csv')
+    print(f'Data successfully loaded from {filepath}')
+    return data
+
+extract('Stores.csv')
+
+def transform(data):
+    data = data.dropna()
+    data.drop(index=13, inplace=True)
+    data.drop(index=14, inplace=True)
+    data.drop(index=21, inplace=True)
+    data['Open Date'] = pd.to_datetime(data['Open Date'])
+    print('Data successfully transformed')
+    return data
+
+def load(data, tablename):
+    user = os.getenv('DB_USER')
+    password = os.getenv('DB_PASSWORD')
+    host = os.getenv('DB_HOST')
+    port = os.getenv('DB_PORT')
+    name = os.getenv('DB_NAME')
+    
+    #starting postgres engine
+    engine = create_engine(f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{name}')
+    
+    #loading data into postgres
+    data.to_sql(tablename, engine, if_exists='replace', index=False)
+    print(f'Data successfully loaded into {tablename} table')
+
+def pipeline(filepath, tablename):
+    data = extract(filepath)
+    transformed_data = transform(data)
+    load(transformed_data, tablename)
+
+filepath = 'Stores.csv'
+tablename = 'Stores'
+
+pipeline(filepath, tablename)
