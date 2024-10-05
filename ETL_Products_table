@@ -1,0 +1,45 @@
+import pandas as pd 
+from sqlalchemy import create_engine 
+from dotenv import load_dotenv
+import os
+import psycopg2
+
+def extract(filepath):
+    data = pd.read_csv('Products.csv')
+    print(f'Data has been loaded successfully from {filepath}')
+    return data 
+
+extract('Products.csv')
+
+def transform(data):
+    data['Unit Cost USD'] = data['Unit Cost USD'].str.replace('$', '')
+    data['Unit Price USD'] = data['Unit Price USD'].str.replace('$', '')
+    data['Unit Cost USD'] = pd.to_numeric(data['Unit Cost USD'], errors='coerce')
+    data['Unit Price USD'] = pd.to_numeric(data['Unit Price USD'], errors='coerce')
+    data = data.dropna()
+    print('Data transformation successful')
+    return data 
+
+def load(data, tablename):
+    user = os.getenv('DB_USER')
+    password = os.getenv('DB_PASSWORD')
+    host = os.getenv('DB_HOST')
+    port = os.getenv('DB_PORT')
+    name = os.getenv('DB_NAME')
+    
+    #starting postgres engine
+    engine = create_engine(f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{name}')
+    
+    #loading data into postgres
+    data.to_sql(tablename, engine, if_exists='replace', index=False)
+    print(f'Data has been successfully loaded into {tablename} table')
+    
+def pipeline(filepath, tablename):
+    data = extract(filepath)
+    transformed_data = transform(data)
+    load(transformed_data, tablename)
+    
+filepath = 'Products.csv'
+tablename = 'Products'
+
+pipeline(filepath, tablename)
