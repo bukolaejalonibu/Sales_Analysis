@@ -1,0 +1,178 @@
+select * from "Customers"
+select * from "Exchange_Rates"
+select * from "Products"
+select * from "Sales"
+select * from "Stores"
+
+--Q1. Which stores consistently achieve the highest sales volume, and how does this
+--vary by year and quarter?
+
+WITH rob AS (
+SELECT
+	"StoreKey",
+	"Order Date",
+	EXTRACT(YEAR FROM "Order Date") AS year,
+	EXTRACT(QUARTER FROM "Order Date") AS quarter,
+	ROUND(CAST(SUM("Unit Price USD" * "Quantity") AS DECIMAL) , 2) AS sales_vol
+--	RANK() OVER(PARTITION BY year ORDER BY "sales_vol" ASC)
+FROM
+	"Sales" s
+JOIN
+	"Products" p
+ON
+	p."ProductKey" = s."ProductKey"
+GROUP BY
+	1, 2, 3, 4
+ORDER BY 
+	5 DESC
+)
+	
+SELECT
+	"StoreKey",
+	year,
+	quarter,
+	SUM(sales_vol) AS tot_sales_vol
+--	ROW_NUMBER() OVER(PARTITION BY year ORDER BY sales_vol DESC) rn
+FROM
+	rob
+GROUP BY
+	1, 2, 3;
+
+--Q2. What are the most profitable products in each region, and how do exchange rate
+--fluctuations impact profitability?
+
+WITH water AS (
+SELECT
+	p."Product Name",
+	c."State" AS region,
+	ROUND(CAST(SUM((p."Unit Price USD" - p."Unit Cost USD") * s."Quantity") AS DECIMAL) , 2) AS tot_profit
+FROM
+	"Products" p
+JOIN
+	"Sales" s
+ON
+	s."ProductKey" = p."ProductKey" 
+JOIN
+	"Customers" c
+ON
+	c."CustomerKey" = s."CustomerKey"
+GROUP BY
+	1, 2
+ORDER BY
+	3 DESC
+)
+	
+SELECT
+	*,
+	ROW_NUMBER() OVER(PARTITION BY region ORDER BY tot_profit DESC)
+FROM
+	water;
+	
+-- wat2 AS(
+-- SELECT 
+-- 	ex."Currency",
+-- 	s."Order Date"
+-- FROM
+-- 	"Exchange_Rates" ex
+-- JOIN
+-- 	"Sales" s
+-- ON
+-- 	s."Currency Code" = ex."Currency" 
+-- )
+
+-- select * 
+-- from
+-- 	water
+-- left join
+-- 	wat2
+-- on
+-- 	s."Currency Code" = ex."Currency"
+
+-- Q3.Which customer segments exhibit the highest repeat purchase behavior, and what
+--are the key factors driving loyalty?
+
+
+WITH ages AS (
+-- getting the ages of the customers and their order counts
+SELECT
+	EXTRACT(YEAR FROM AGE(c."Birthday")) AS customer_age ,
+	COUNT(s."Order Number") AS order_count,
+	s."ProductKey",
+	s."CustomerKey" 
+FROM
+	"Customers" c
+JOIN
+	"Sales" s
+ON
+	s."CustomerKey" = c."CustomerKey"
+GROUP BY
+	1, 3, 4
+),
+	
+-- SELECT
+-- 	MAX(customer_age),
+-- 	MIN(customer_age)
+-- FROM
+-- 	ages
+	
+-- segmenting the customers according to their ages
+cust_seg AS (	
+SELECT
+	*,
+	CASE
+		WHEN customer_age BETWEEN 20 AND 30 THEN 'a, Gen z'
+		WHEN customer_age BETWEEN 31 AND 40 THEN 'b, Millenial'
+		WHEN customer_age BETWEEN 41 AND 50 THEN 'c, Gen x'
+		WHEN customer_age BETWEEN 51 AND 60 THEN 'd, Baby boomers'
+		ELSE 'e, Metusellahs'
+	END AS customer_segment
+FROM
+	ages
+)
+SELECT
+	COUNT(order_count) AS total_order_count,
+	customer_segment
+FROM
+	cust_seg
+GROUP BY
+	2
+ORDER BY
+	1 DESC;
+
+--Q4. How do delivery delays impact sales performance, and what are the most common
+--causes of delays across different stores and regions?
+
+SELECT
+	(s."Delivery Date" - s."Order Date") AS del_delay,
+	ROUND(CAST(SUM(s."Quantity" * p."Unit Price USD") AS DECIMAL), 2) AS total_sales
+FROM
+	"Sales" s
+JOIN
+	"Products" p
+ON
+	p."ProductKey" = s."ProductKey"
+GROUP BY
+	1
+ORDER BY 
+	2 DESC;
+
+
+--Q5. What is the relationship between store size (in square meters) and revenue
+-- generation? Are larger stores more effective in driving sales, or is there a
+-- diminishing return as store size increases?
+
+SELECT
+	*
+FROM
+	"Stores" st
+JOIN
+ 	"Sales" s
+ON
+ 	st."StoreKey" = s."StoreKey"
+
+-- SELECT
+-- 	(select "Square Meters" from "Stores"),
+-- 	s."Quantity"
+-- FROM
+-- 	"Sales" s
+
